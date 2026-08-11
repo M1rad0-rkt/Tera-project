@@ -1,0 +1,7 @@
+# Environnement virtuelle
+.venv/
+
+# Data
+data/raw
+data/processed
+data/
