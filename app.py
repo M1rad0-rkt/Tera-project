@@ -14,6 +14,8 @@ AVATAR_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asset", 
 
 print(MAP_IMAGE_PATH)
 print(os.path.exists(MAP_IMAGE_PATH))
+from src.visualization.carte import plot_sensor_map
+from src.visualization.camembert import  plot_pm25_category_bar
 
 st.set_page_config(page_title="Analyse de la qualité de l'aire", layout="wide")
 
@@ -69,13 +71,18 @@ if season_checkbox:
         key="selected_season",
     )
 
-st.sidebar.header("Filtre capteurs")
+
 capteurs_disponibles = sorted(df["id_install"].astype(str).unique())
-capteurs_selectionnes = st.sidebar.multiselect(
-    "Sélectionner un ou plusieurs capteurs",
-    options=capteurs_disponibles,
-    default=capteurs_disponibles,
-)
+capteurs_checkbox = st.sidebar.checkbox("Filtrer par capteurs", value=False, key="capteurs_checkbox")
+selected_capteurs = None
+if capteurs_checkbox:
+    capteurs_selectionnes = st.sidebar.multiselect(
+        "Sélectionner un ou plusieurs capteurs",
+        options=capteurs_disponibles,
+        default=capteurs_disponibles,
+    )
+else:
+    capteurs_selectionnes = None
 
 
 
@@ -247,37 +254,32 @@ with col22:
         else:
             st.pyplot(fig)
 
-col31, col32 = st.columns(2)
 
-with col31:
-    st.subheader("Répartition PM2.5")
+col30, col31 = st.columns(2)
+
+with col30:
+    kwargs_date = {}
+    if date is not None:
+        kwargs_date = {"start_date": str(date), "end_date": str(date)}
+    kwargs_sensors = {"sensors": capteurs_selectionnes if capteurs_selectionnes else None}
+    kwargs_season = {"season": selected_season if season_checkbox else None}
+
+    st.subheader("Répartition de la qualité de l'air")
     st.markdown("Voir la proportion du temps passé dans chaque catégorie de qualité de l'air.")
 
-    col_pie, _ = st.columns([1, 1.3])
-    fig_pie = plot_pm25_category_pie(
-        df,
-        start_date=str(date) if date is not None else None,
-        end_date=str(date) if date is not None else None,
-        sensors=capteurs_selectionnes if capteurs_selectionnes else None,
-    )
-
-    if fig_pie is None:
+    fig_bar = plot_pm25_category_bar(df, **kwargs_date, **kwargs_sensors, **kwargs_season)
+    if fig_bar is None:
         st.warning("Aucune donnée disponible pour ce filtre.")
     else:
-        st.pyplot(fig_pie)
+        st.pyplot(fig_bar)
 
-with col32:
-    st.subheader("Carte des mesures")
+with col31:
+    # --- Carte des capteurs ---
+    st.subheader("Cartes des mesures")
     st.markdown("Voir où les concentrations de PM2.5 sont les plus élevées.")
 
-    fig_map = plot_sensor_map(
-        df,
-        start_date=str(date) if date is not None else None,
-        end_date=str(date) if date is not None else None,
-        sensors=capteurs_selectionnes if capteurs_selectionnes else None,
-    )
-
+    fig_map = plot_sensor_map(df, **kwargs_date, **kwargs_sensors, **kwargs_season)
     if fig_map is None:
-        st.warning("Aucune donnée disponible pour afficher la carte avec ce filtre.")
+        st.warning("Aucune donnée disponible pour ce filtre.")
     else:
         st.pyplot(fig_map)
