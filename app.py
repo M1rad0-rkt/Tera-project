@@ -7,8 +7,15 @@ import pandas as pd
 from src.visualization.PM1vsPM25 import plot_hourly_pm
 from src.visualization.carte import plot_sensor_map
 from src.visualization.camembert import  plot_pm25_category_bar
+import os
+from src.visualization.carte import plot_sensor_map, MAP_IMAGE_PATH
+
+AVATAR_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asset", "Avtar.png")
 
 st.set_page_config(page_title="Analyse de la qualité de l'aire", layout="wide")
+
+if os.path.exists(AVATAR_PATH):
+    st.sidebar.image(AVATAR_PATH, width=150)
 
 @st.cache_data
 def load_data():
@@ -72,11 +79,14 @@ if capteurs_checkbox:
 else:
     capteurs_selectionnes = None
 
-def kpi_card(title, value, icon):
+
+
+def kpi_card(title, value, icon="", bg_color="#ffffff"):
+    icon_html = f" {icon}" if icon else ""
     return f"""
-    <div class="kpi-card">
+    <div class="kpi-card" style="background: {bg_color};">
         <div class="kpi-title">{title}</div>
-        <div class="kpi-value">{value}</div>
+        <div class="kpi-value">{value}{icon_html}</div>
     </div>
     """
 
@@ -113,6 +123,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+
+global_pm1 = df["pm1"].mean()
+global_pm25 = df["pm25"].mean()
+
 col1, col2, col3 = st.columns(3)
 if date is None:
     # no date filter: show global KPIs
@@ -122,37 +137,55 @@ if date is None:
     sensors_list = ", ".join(sorted(df['id_sensor'].astype(str).unique())[:50])
 
     with col1:
-        st.markdown(kpi_card("PM1 moyen (global)", kpi_pm1, "🌫️"), unsafe_allow_html=True)
+        st.markdown(kpi_card("PM1 moyen (global)", kpi_pm1), unsafe_allow_html=True)
 
     with col2:
-        st.markdown(kpi_card("PM2.5 moyen (global)", kpi_pm25, "🌁"), unsafe_allow_html=True)
-
+        st.markdown(kpi_card("PM2.5 moyen (global)", kpi_pm25), unsafe_allow_html=True)
     with col3:
-        st.markdown(kpi_card("Capteurs (global)", kpi_sensors, "📡"), unsafe_allow_html=True)
+        st.markdown(kpi_card("Capteurs (global)", kpi_sensors, " "), unsafe_allow_html=True)
 
 else:
     date_df = df[df["time"].dt.date == date]
+    sensors_count = 0
+    sensors_list = "Aucune donnée pour la date sélectionnée"
+    pm1_icon = ""
+    pm1_bg = "#ffffff"
+    pm25_icon = ""
+    pm25_bg = "#ffffff"
 
     if date_df.empty:
         pm1_val = "N/A"
         pm25_val = "N/A"
-        sensors_count = 0
-        sensors_list = "Aucune donnée pour la date sélectionnée"
     else:
-        pm1_val = f"{date_df['pm1'].mean():.2f} µg/m³"
-        pm25_val = f"{date_df['pm25'].mean():.2f} µg/m³"
+        selected_pm1 = date_df['pm1'].mean()
+        selected_pm25 = date_df['pm25'].mean()
+        pm1_val = f"{selected_pm1:.2f} µg/m³"
+        pm25_val = f"{selected_pm25:.2f} µg/m³"
         sensors_count = int(date_df['id_sensor'].nunique())
         unique_sensors = sorted(date_df['id_sensor'].astype(str).unique())
         sensors_list = ", ".join(unique_sensors[:50])
 
+        if selected_pm1 < global_pm1:
+            pm1_icon = "▼"
+            pm1_bg = "#fee2e2"
+        else:
+            pm1_icon = "▲"
+            pm1_bg = "#d1fae5"
+
+        if selected_pm25 < global_pm25:
+            pm25_icon = "▼"
+            pm25_bg = "#fee2e2"
+        else:
+            pm25_icon = "▲"
+            pm25_bg = "#d1fae5"
+
     with col1:
-        st.markdown(kpi_card("PM1 moyen (sélection)", pm1_val, "🌫️"), unsafe_allow_html=True)
+        st.markdown(kpi_card("PM1 moyen (sélection)", pm1_val, pm1_icon, pm1_bg), unsafe_allow_html=True)
 
     with col2:
-        st.markdown(kpi_card("PM2.5 moyen (sélection)", pm25_val, "🌁"), unsafe_allow_html=True)
-
+        st.markdown(kpi_card("PM2.5 moyen (sélection)", pm25_val, pm25_icon, pm25_bg), unsafe_allow_html=True)
     with col3:
-        st.markdown(kpi_card("Capteurs (sélection)", sensors_count, "📡"), unsafe_allow_html=True)
+        st.markdown(kpi_card("Capteurs (sélection)", sensors_count), unsafe_allow_html=True)
 
 st.subheader("Visualisation des particules PM1 et PM2.5 dans le temps.")
 col11, col12 = st.columns(2)
@@ -215,6 +248,7 @@ with col22:
             st.warning(f"Aucune donnée trouvée pour {date}")
         else:
             st.pyplot(fig)
+
 
 col30, col31 = st.columns(2)
 

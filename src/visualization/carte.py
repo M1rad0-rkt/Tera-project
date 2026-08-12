@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import matplotlib.patches as mpatches
 
 
 # Bornes géographiques de l'image de fond -> À AJUSTER selon ton image réelle
@@ -29,25 +30,31 @@ SEASON_MAP = {
     12: "Hiver",
 }
 
+# Couleurs par catégorie -> identiques à Camembert.py, pour un code couleur cohérent
+COULEURS_CATEGORIE = {
+    "Bon": "#2ecc71",
+    "Modéré": "#f1c40f",
+    "Mauvais": "#e74c3c",
+    "Très mauvais": "#860000",
+}
+ORDRE_CATEGORIES = ["Bon", "Modéré", "Mauvais", "Très mauvais"]
+
 
 def plot_sensor_map(df, start_date="2024-01-01", end_date="2026-12-31", sensors=None, season=None):
     """Affiche la position des capteurs sur la carte de Fianarantsoa,
-    colorés selon la moyenne de PM2.5 sur la période/le jour/la saison choisis.
+    colorés selon la catégorie de qualité de l'air (pm25_category) la
+    plus fréquente pour chaque capteur, sur la période/le jour/la
+    saison choisis.
 
-    Même logique de filtrage que plot_daily_hourly_mean : bornes de dates
-    avec valeurs par défaut couvrant toute la plage du dataset. Pour
-    afficher la qualité de l'air d'un jour précis, passe la même date
-    en start_date et end_date.
-
-    Les coordonnées de chaque capteur sont calculées directement depuis
-    `df` (moyenne des lat/lon par id_install), pas depuis une table
-    codée en dur -> reste à jour automatiquement si de nouveaux
-    capteurs sont ajoutés au dataset.
+    Le mode (catégorie majoritaire) est utilisé plutôt que la moyenne
+    brute de PM2.5 : ça donne une couleur discrète cohérente avec le
+    camembert, représentant l'état typique de chaque capteur sur la
+    période -- pas un pic isolé.
 
     Parameters
     ----------
     df : DataFrame contenant au minimum les colonnes
-         'id_install', 'latitude', 'longitude', 'pm25', 'time'
+         'id_install', 'latitude', 'longitude', 'pm25', 'pm25_category', 'time'
     start_date, end_date : bornes de filtrage temporel ("YYYY-MM-DD")
     sensors : liste d'id_install à afficher (optionnel, tous par défaut)
     season : "Été", "Automne", "Hiver" ou "Printemps" (optionnel, aucun filtre par défaut)
@@ -69,21 +76,31 @@ def plot_sensor_map(df, start_date="2024-01-01", end_date="2026-12-31", sensors=
     if sensors:
         fa = fa[fa["id_install"].isin(sensors)]
 
+    fa = fa.dropna(subset=["pm25_category"])
+
     if fa.empty:
         return None
 
-    # Position moyenne de chaque capteur (au cas où plusieurs lignes légèrement différentes)
+    # Position moyenne de chaque capteur
     latitude_mean = fa.groupby(fa["id_install"])["latitude"].mean().sort_index()
     longitude_mean = fa.groupby(fa["id_install"])["longitude"].mean().sort_index()
 
-    # Moyenne de PM2.5 par capteur sur la période filtrée
+    # Moyenne de PM2.5 (informative, affichable dans une annotation/tooltip si besoin)
     pm25_mean = fa.groupby(fa["id_install"])["pm25"].mean().sort_index()
+
+    # Catégorie majoritaire par capteur (mode)
+    categorie_dominante = (
+        fa.groupby(fa["id_install"])["pm25_category"]
+          .agg(lambda x: x.mode().iloc[0] if not x.mode().empty else None)
+          .sort_index()
+    )
 
     geo_df = pd.DataFrame({
         "latitude": latitude_mean,
         "longitude": longitude_mean,
         "pm25": pm25_mean,
-    }).dropna(subset=["latitude", "longitude"])
+        "categorie": categorie_dominante,
+    }).dropna(subset=["latitude", "longitude", "categorie"])
 
     if geo_df.empty:
         return None
@@ -99,9 +116,11 @@ def plot_sensor_map(df, start_date="2024-01-01", end_date="2026-12-31", sensors=
     if img is not None:
         ax.imshow(img, extent=[LON_MIN, LON_MAX, LAT_MIN, LAT_MAX])
 
-    sc = ax.scatter(
+    couleurs_points = [COULEURS_CATEGORIE.get(cat, "#95a5a6") for cat in geo_df["categorie"]]
+
+    ax.scatter(
         geo_df["longitude"], geo_df["latitude"],
-        c=geo_df["pm25"], cmap="RdYlGn_r",
+        c=couleurs_points,
         s=220, edgecolors="black", linewidths=1, zorder=5,
     )
 
@@ -113,7 +132,10 @@ def plot_sensor_map(df, start_date="2024-01-01", end_date="2026-12-31", sensors=
             fontsize=8, fontweight="bold", zorder=6,
         )
 
-    plt.colorbar(sc, ax=ax, label="PM2.5 moyen (µg/m³)")
+    categories_presentes = [c for c in ORDRE_CATEGORIES if c in geo_df["categorie"].unique()]
+    handles = [mpatches.Patch(color=COULEURS_CATEGORIE[cat], label=cat) for cat in categories_presentes]
+    if handles:
+        ax.legend(handles=handles, title="Qualité de l'air (typique)", loc="upper right")
 
     ax.set_xlim(LON_MIN, LON_MAX)
     ax.set_ylim(LAT_MIN, LAT_MAX)
@@ -159,7 +181,6 @@ def plot_sensor_locations(df):
     if geo_df.empty:
         return None
 
-    # Charge l'image de fond (si absente, la carte s'affiche quand même, sans fond)
     try:
         img = mpimg.imread(MAP_IMAGE_PATH)
     except FileNotFoundError:

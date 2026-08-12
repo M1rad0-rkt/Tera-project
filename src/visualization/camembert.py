@@ -8,7 +8,7 @@ COULEURS_CATEGORIE = {
     "Bon": "#2ecc71",
     "Modéré": "#f1c40f",
     "Mauvais": "#e74c3c",
-    "Très mauvais": "#8e44ad",
+    "Très mauvais": "#860000",
 }
 
 # Correspondance mois -> saison, identique à celle utilisée dans Annuel.py
