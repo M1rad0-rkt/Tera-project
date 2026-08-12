@@ -7,9 +7,7 @@ def clean_columns(df):
 def convert_types(df):
     df["id_sensor"] = df["id_sensor"].astype(str)
     df["id_install"] = df["id_install"].astype(str)
-
     df["time"] = pd.to_datetime(df["time"], errors="coerce")
-    
     df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
     df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
     df["pm1"] = pd.to_numeric(df["pm1"], errors="coerce")
@@ -18,13 +16,10 @@ def convert_types(df):
     return df
 
 def handle_missing_values(df):
+    df = df[(df["longitude"].between(-180, 180)) & (df["latitude"].between(-90, 90))]
     df = df.dropna(
-        subset=["id_sensor", "id_install", "time"]
+        subset=["id_sensor", "id_install", "time","pm1","pm25"]
     )
-
-    df["pm1"] = df["pm1"].fillna(0)
-    df["pm25"] = df["pm25"].fillna(0)
-
     return df
 
 def remove_duplicates(df):
@@ -43,8 +38,8 @@ def validate_coordinates(df):
 
 def validate_pm_values(df):
     df = df[
-        (df["pm1"] >= 0)
-        & (df["pm25"] >= 0)
+        (df["pm1"] > 0)
+        & (df["pm25"] > 0)
     ]
 
     return df

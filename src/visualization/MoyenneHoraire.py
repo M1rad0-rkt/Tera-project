@@ -46,14 +46,26 @@ def plot_hourly_average(df, start_date="2024-01-01", end_date="2026-12-31"):
           .reset_index()
     )
 
-    plt.figure(figsize=(12, 6))
-    plt.plot(hourly["time"], hourly["pm1"], label="PM1 (moyenne horaire)")
-    plt.plot(hourly["time"], hourly["pm25"], label="PM2.5 (moyenne horaire)")
-    plt.xlabel("Temps")
-    plt.ylabel("Concentration moyenne")
-    plt.title(f"Moyenne horaire de PM1 et PM2.5 ({start_date} - {end_date})")
-    plt.legend()
-    fig = plt.gcf()
+    if hourly[['pm1', 'pm25']].dropna(how='all').empty:
+        return None
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    plotted = False
+
+    if hourly['pm1'].notna().any():
+        ax.plot(hourly["time"], hourly["pm1"], label="PM1 (moyenne horaire)")
+        plotted = True
+    if hourly['pm25'].notna().any():
+        ax.plot(hourly["time"], hourly["pm25"], label="PM2.5 (moyenne horaire)")
+        plotted = True
+
+    if not plotted:
+        return None
+
+    ax.set_xlabel("Temps")
+    ax.set_ylabel("Concentration moyenne")
+    ax.set_title(f"Moyenne horaire de PM1 et PM2.5 ({start_date} - {end_date})")
+    ax.legend()
     fig.autofmt_xdate()
     fig.tight_layout()
 
