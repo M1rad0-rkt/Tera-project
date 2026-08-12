@@ -2,7 +2,6 @@ from src.extract.extract import extract_data
 from src.transform.transform import transform_data
 from src.load.load import load_data
 
-
 def run_pipeline():
 
     # Extract
@@ -10,10 +9,6 @@ def run_pipeline():
         "data/raw/data.csv"
     )
 
-    """   print("=== APRÈS EXTRACT ===")
-    print(df.columns.tolist())
-    print(df.head())
-    print("=====================")"""
     # Transform
     df = transform_data(df)
 
@@ -22,9 +17,9 @@ def run_pipeline():
         df,
         "data/processed/data_clean.csv"
     )
-    print(df.head())
 
+    print(df.head())
     print("✅ Pipeline ETL terminé")
 
-
 run_pipeline()
+

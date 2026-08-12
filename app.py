@@ -6,6 +6,12 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from src.visualization.PM1vsPM25 import plot_hourly_pm
+import os
+from src.visualization.carte import plot_sensor_map, MAP_IMAGE_PATH
+from src.visualization.camembert import plot_pm25_category_pie
+
+print(MAP_IMAGE_PATH)
+print(os.path.exists(MAP_IMAGE_PATH))
 
 st.set_page_config(page_title="Analyse de la qualité de l'aire", layout="wide")
 
@@ -29,6 +35,7 @@ st.sidebar.header("Filtres")
 
 first_date = df["time"].dropna().dt.date.min()
 last_date = df["time"].dropna().dt.date.max()
+
 # default: no date selected at startup
 use_date = st.sidebar.checkbox("Activer filtre par date", value=False, key="use_date_filter")
 
@@ -41,7 +48,6 @@ if use_date:
         max_value=last_date,
         key="selected_date",
     )
-
 
 # If the session state has use_date_filter True, ensure date is set from session
 if st.session_state.get("use_date_filter", False):
@@ -57,6 +63,14 @@ if season_checkbox:
         ["Hiver", "Printemps", "Été", "Automne"],
         key="selected_season",
     )
+
+st.sidebar.header("Filtre capteurs")
+capteurs_disponibles = sorted(df["id_install"].astype(str).unique())
+capteurs_selectionnes = st.sidebar.multiselect(
+    "Sélectionner un ou plusieurs capteurs",
+    options=capteurs_disponibles,
+    default=capteurs_disponibles,
+)
 
 def kpi_card(title, value, icon):
     return f"""
@@ -202,8 +216,33 @@ with col22:
         else:
             st.pyplot(fig)
 
+st.subheader("Répartition de la qualité de l'air")
+st.markdown("Voir la proportion du temps passé dans chaque catégorie de qualité de l'air.")
 
+col_pie, _ = st.columns([1, 2])
+fig_pie = plot_pm25_category_pie(
+    df,
+    start_date=str(date) if date is not None else None,
+    end_date=str(date) if date is not None else None,
+    sensors=capteurs_selectionnes if capteurs_selectionnes else None,
+)
+
+if fig_pie is None:
+    st.warning("Aucune donnée disponible pour ce filtre.")
+else:
+    st.pyplot(fig_pie)
 
 st.subheader("Cartes des mesures")
 st.markdown("Voir où les concentrations de PM2.5 sont les plus élevées.")
 
+fig_map = plot_sensor_map(
+    df,
+    start_date=str(date) if date is not None else None,
+    end_date=str(date) if date is not None else None,
+    sensors=capteurs_selectionnes if capteurs_selectionnes else None,
+)
+
+if fig_map is None:
+    st.warning("Aucune donnée disponible pour afficher la carte avec ce filtre.")
+else:
+    st.pyplot(fig_map)

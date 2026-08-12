@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 #===============================================================
-#ANALYSE DE L EVOLUTION PAR SAISON
+#ANALYSE MOYENNE QUOTIDIENNE
 #===============================================================
  
 def plot_time(df):
@@ -13,8 +13,8 @@ def plot_time(df):
         return None
 
     plt.figure(figsize=(12, 6))
-    plt.plot(fa["time"], fa["pm1"], label="PM1")
-    plt.plot(fa["time"], fa["pm25"], label="PM2.5")
+    plt.bar(fa["time"], fa["pm1"], label="PM1")
+    plt.bar(fa["time"], fa["pm25"], label="PM2.5")
     plt.xlabel("Temps")
     plt.ylabel("Concentration")
     plt.title("Moyenne de l'évolution de PM1 et PM2.5 dans le temps")
