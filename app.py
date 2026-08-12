@@ -4,9 +4,7 @@ from src.visualization.MoyenneQuo import plot_daily_hourly_mean
 from src.visualization.Annuel import plot_annual_evolution
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 from src.visualization.PM1vsPM25 import plot_hourly_pm
-import os
 from src.visualization.carte import plot_sensor_map
 from src.visualization.camembert import  plot_pm25_category_bar
 
