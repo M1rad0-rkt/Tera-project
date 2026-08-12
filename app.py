@@ -7,11 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from src.visualization.PM1vsPM25 import plot_hourly_pm
 import os
-from src.visualization.carte import plot_sensor_map, MAP_IMAGE_PATH
-from src.visualization.camembert import plot_pm25_category_pie
-
-print(MAP_IMAGE_PATH)
-print(os.path.exists(MAP_IMAGE_PATH))
+from src.visualization.carte import plot_sensor_map
+from src.visualization.camembert import  plot_pm25_category_bar
 
 st.set_page_config(page_title="Analyse de la qualité de l'aire", layout="wide")
 
@@ -64,13 +61,18 @@ if season_checkbox:
         key="selected_season",
     )
 
-st.sidebar.header("Filtre capteurs")
+
 capteurs_disponibles = sorted(df["id_install"].astype(str).unique())
-capteurs_selectionnes = st.sidebar.multiselect(
-    "Sélectionner un ou plusieurs capteurs",
-    options=capteurs_disponibles,
-    default=capteurs_disponibles,
-)
+capteurs_checkbox = st.sidebar.checkbox("Filtrer par capteurs", value=False, key="capteurs_checkbox")
+selected_capteurs = None
+if capteurs_checkbox:
+    capteurs_selectionnes = st.sidebar.multiselect(
+        "Sélectionner un ou plusieurs capteurs",
+        options=capteurs_disponibles,
+        default=capteurs_disponibles,
+    )
+else:
+    capteurs_selectionnes = None
 
 def kpi_card(title, value, icon):
     return f"""
@@ -216,33 +218,31 @@ with col22:
         else:
             st.pyplot(fig)
 
-st.subheader("Répartition de la qualité de l'air")
-st.markdown("Voir la proportion du temps passé dans chaque catégorie de qualité de l'air.")
+col30, col31 = st.columns(2)
 
-col_pie, _ = st.columns([1, 2])
-fig_pie = plot_pm25_category_pie(
-    df,
-    start_date=str(date) if date is not None else None,
-    end_date=str(date) if date is not None else None,
-    sensors=capteurs_selectionnes if capteurs_selectionnes else None,
-)
+with col30:
+    kwargs_date = {}
+    if date is not None:
+        kwargs_date = {"start_date": str(date), "end_date": str(date)}
+    kwargs_sensors = {"sensors": capteurs_selectionnes if capteurs_selectionnes else None}
+    kwargs_season = {"season": selected_season if season_checkbox else None}
 
-if fig_pie is None:
-    st.warning("Aucune donnée disponible pour ce filtre.")
-else:
-    st.pyplot(fig_pie)
+    st.subheader("Répartition de la qualité de l'air")
+    st.markdown("Voir la proportion du temps passé dans chaque catégorie de qualité de l'air.")
 
-st.subheader("Cartes des mesures")
-st.markdown("Voir où les concentrations de PM2.5 sont les plus élevées.")
+    fig_bar = plot_pm25_category_bar(df, **kwargs_date, **kwargs_sensors, **kwargs_season)
+    if fig_bar is None:
+        st.warning("Aucune donnée disponible pour ce filtre.")
+    else:
+        st.pyplot(fig_bar)
 
-fig_map = plot_sensor_map(
-    df,
-    start_date=str(date) if date is not None else None,
-    end_date=str(date) if date is not None else None,
-    sensors=capteurs_selectionnes if capteurs_selectionnes else None,
-)
+with col31:
+    # --- Carte des capteurs ---
+    st.subheader("Cartes des mesures")
+    st.markdown("Voir où les concentrations de PM2.5 sont les plus élevées.")
 
-if fig_map is None:
-    st.warning("Aucune donnée disponible pour afficher la carte avec ce filtre.")
-else:
-    st.pyplot(fig_map)
+    fig_map = plot_sensor_map(df, **kwargs_date, **kwargs_sensors, **kwargs_season)
+    if fig_map is None:
+        st.warning("Aucune donnée disponible pour ce filtre.")
+    else:
+        st.pyplot(fig_map)
