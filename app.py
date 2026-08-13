@@ -376,7 +376,6 @@ with col_left:
     fig_trends = plot_pm25_category_trends(df, start_date=start_daily, end_date=end_daily,
                                           sensors=capteurs_selectionnes if capteurs_selectionnes else None,
                                           season=selected_season if selected_season else None)
-                                        #   category=selected_category_filter
     if fig_trends is None:
         st.warning("Aucune donnée pour les tendances par catégorie.")
     else:
@@ -404,7 +403,6 @@ with col_right:
     else:
         st.warning("Aucune donnée pour ces filtres.")
     
-
 
 st.subheader("Extremes par capteur (PM2.5)")
     # Utiliser filtered_df ou daily_df selon le contexte souhaité
